@@ -1,85 +1,132 @@
 /* sequential version of N body simulation */
+/* Distributed and Parallel Computing 2nd project */
+/* Author: Yangkai Zhou, Yimeng Li */
 
-# include <iostream>
-# include <cmath>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <math.h>
+#include <vector>
 
 using namespace std;
 
-double G = 6.67 * pow(10, -11);
-//# define G	6.67
-double e = 0.00001;
-//# define e 	1
-# define period	100.0
+/* define the global constants */
+const double G = 6.67 * pow(10, -11);
+const double e = 0.00001;
+const double period = 1;
 
-void computeForce();
-void compute_a();
-void computerVelocity();
-void computePosition();
+/* define the structure of particle */
+struct particle
+{
+	double m;
+	double pos_x;
+	double pos_y;
+	double v_x;
+	double v_y;
+	double a_x;
+	double a_y;
 
-float Force[2][2] = {{0, 0}, {0, 0}};
+	particle(double m = 0, double pos_x = 0, double pos_y = 0, 
+			double v_x = 0, double v_y = 0, double a_x = 0, double a_y = 0)
+	{
+		this->m			= m;
+		this->pos_x		= pos_x;
+		this->pos_y		= pos_y;
+		this->v_x		= v_x;
+		this->v_y		= v_y;
+		this->a_x		= a_x;
+		this->a_y		= a_y;
+	}
+};
 
-/* 0: m; (1, 2): (px, py); (3, 4): (vx, vy); (5, 6): (ax, ay) */
-float particle[2][7] = {{5.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.5}, {2.2, 1.5, 1.0, 0.0, 0.0, 0.0, 0.0}};
-// double particle[2][7] = {{1.0, 0.1, 0.1, 1.0, 1.0, 1.0, 1.0}, {1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0}};
+/* define the structure for force */
+struct force
+{
+	double f_x;
+	double f_y;
+
+	force(double f_x = 0, double f_y = 0)
+	{
+		this->f_x = f_x;
+		this->f_y = f_y;
+	}
+};
+
+/* define the global data */
+int g_N;						// number of particles
+vector<force> g_F;				// net force for each particle
+vector<particle> g_pv;			// particle vector
+
+void setUp();
+void update();
 
 int main(int argc, char ** argv) {
+
+	setUp();
 	int time = 0;
-	while (time < 10) {
-		cout << Force[0][0] << "(" << particle[0][1] << "," << particle[0][2] << ")" << endl;
-		cout << Force[1][0] << "(" << particle[1][1] << "," << particle[1][2] << ")" << endl;
-		
-		computeForce();
-		compute_a();
-		computerVelocity();
-		computePosition();
-		
+	while (time < 100) {
+
+		update();
+
+		for ( int i = 0; i < g_N; ++i )
+		{
+			cout << "particle: " << i << " pos_x: " << g_pv[i].pos_x << " pos_y: " << g_pv[i].pos_y << endl;
+		}
 		++time;
 	}
 	return 0;
 }
 
-/* compute the force */
-void computeForce() {
-	int i = 0;
-	int j = 0;
-	for (i = 0; i < 2; ++i) {
-		for (j = 0; j < 2; ++j) {
+/* read the input data */
+void setUp()
+{
+	ifstream inFile;
+	inFile.open("input.txt");
+	
+	inFile >> g_N;
+	g_pv.resize(g_N);
+	g_F.resize(g_N);
+	for ( int i = 0; i < g_N; ++i )
+	{
+		inFile >> g_pv[i].m >> g_pv[i].pos_x >> g_pv[i].pos_y
+			   >> g_pv[i].v_x >> g_pv[i].v_y >> g_pv[i].a_x >> g_pv[i].a_y; 
+	}
+	
+	inFile.close();
+}
+
+/* update one frame */
+void update()
+{
+	/* compute the force */
+	for ( int i = 0; i < g_N; ++i ) {
+		for ( int j = 0; j < g_N; ++j ) {
 			if (i == j)
 				continue;
 			else {
-				double r_2 = pow((particle[i][1] - particle[j][1]), 2) + pow((particle[i][2] - particle[j][2]), 2);
-				Force[i][0] += (-1) * G * particle[i][0] * particle[j][0] * (particle[i][1] - particle[j][1]) / (pow(r_2 + e, 1.5));	
-				Force[i][1] += (-1) * G * particle[i][0] * particle[j][0] * (particle[i][2] - particle[j][2]) / (pow(r_2 + e, 1.5));
+				double r_2 = pow((g_pv[i].pos_x - g_pv[j].pos_x),2) + pow((g_pv[i].pos_y - g_pv[j].pos_y),2);
+				g_F[i].f_x += (-1) * G * g_pv[i].m * g_pv[j].m * (g_pv[i].pos_x - g_pv[j].pos_x) / (pow(r_2 + e,1.5));
+				g_F[i].f_y += (-1) * G * g_pv[i].m * g_pv[j].m * (g_pv[i].pos_y - g_pv[j].pos_y) / (pow(r_2 + e,1.5));
 			}
 		} 
 	}
-}
 
-/* using force to compute acceleration */
-void compute_a() {
-	int i;
-	for (i = 0; i < 2; ++i) {
-		particle[i][5] = 1.0 * Force[i][0] / particle[i][0];
-		particle[i][6] = 1.0 * Force[i][1] / particle[i][0];
+	/* using force to compute acceleration */
+	for ( int i = 0; i < g_N; ++i ) {
+		g_pv[i].a_x = g_F[i].f_x / g_pv[i].m;
+		g_pv[i].a_y = g_F[i].f_y / g_pv[i].m;
+	}
+
+	/* compute the velocity */
+	for ( int i = 0; i < g_N; ++i ) {
+		g_pv[i].v_x += g_pv[i].a_x * period;
+		g_pv[i].v_y += g_pv[i].a_y * period;
+	}
+
+	/* compute the new position */
+	for ( int i = 0; i < g_N; ++i ) {
+		g_pv[i].pos_x += g_pv[i].v_x * period;
+		g_pv[i].pos_y += g_pv[i].v_y * period;
 	}
 }
 
-/* compute the velocity */
-void computerVelocity() {
-	int i;
-	for (i = 0; i < 2; ++i) {
-		particle[i][3] += 1.0 * particle[i][5] * period; 
-		particle[i][4] += 1.0 * particle[i][6] * period;
-	}
-}
-
-/* compute the new positon */
-void computePosition() {
-	int i;
-	for (i = 0; i < 2; ++i) {
-		particle[i][1] += particle[i][3] * period;
-		cout << particle[i][1] << endl;
-		particle[i][2] += particle[i][4] * period;
-		cout << particle[i][2] << endl;
-	}
-}
