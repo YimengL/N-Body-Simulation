@@ -1,7 +1,7 @@
 N-Body-Simulation
 =================
 
-16:332:566 INTRODUCTION TO PARALLEL AND DISTRIBUTED COMPUTING
+INTRODUCTION TO PARALLEL AND DISTRIBUTED COMPUTING
 
 This is the second project.
 
@@ -21,4 +21,4 @@ Log:
 
 1, Implement the sequential version of N body Simulation (Dec/04/2014 Thu 22:00)
 
-2, 
+2, Implement OpenGL helper function on sequential version of N body Simulation
